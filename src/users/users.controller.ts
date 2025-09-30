@@ -1,7 +1,10 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { AuthGuard } from '@nestjs/passport';
+import { GetUser } from '../auth/decorator';
 
 @Controller('users')
+@UseGuards(AuthGuard('jwt'))
 export class UsersController {
   /*
     GET /users
@@ -15,5 +18,10 @@ export class UsersController {
     @Get()
     findAll() {
         return this.usersService.findAll();
+    }
+
+    @Get('me')
+    getMe(@GetUser('id') userId: number) {
+        return this.usersService.getMe(userId);
     }
 }
