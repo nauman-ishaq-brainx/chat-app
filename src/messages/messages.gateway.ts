@@ -44,6 +44,7 @@ import {
     async handleSendMessage(
       @MessageBody() data: { conversationId: number; userId: number; text: string },
     ) {
+
       const roomName = `conversation_${data.conversationId}`;
   
       // Just broadcast to the room (no DB save)
