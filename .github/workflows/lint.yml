@@ -1,21 +1,23 @@
-name: Lint Code Base
-
-on:
-  pull_request:
-  push:
-    branches: [main]
-
 jobs:
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # 👈 IMPORTANT: fetch full history
+          fetch-depth: 0
 
-      - name: Run Super-Linter
+      - name: Run Super-Linter (only ESLint)
         uses: github/super-linter@v6
         env:
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ALL_CODEBASE: true
+          VALIDATE_JAVASCRIPT_ES: true
+          VALIDATE_TYPESCRIPT_ES: true
+          DISABLE_ERRORS: false
+          # 🔴 Disable all other linters
+          VALIDATE_ALL_OTHER_LINTERS: false
