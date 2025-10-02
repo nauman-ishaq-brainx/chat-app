@@ -1,13 +1,20 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Pool } from 'pg';
+import { MessagesGateway } from './messages.gateway';
+import { UploadService } from './upload.service';
 
 @Injectable()
 export class MessagesService {
-  constructor(@Inject('PG_CONNECTION') private pool: Pool) {}
+  constructor(
+    @Inject('PG_CONNECTION') private pool: Pool,
+    private messagesGateway: MessagesGateway,
+    private uploadService: UploadService,
+  ) {}
 
   async sendMessage(
     senderId: number,
     body: { conversationId?: number; recipientId?: number; content: string },
+    file?: Express.Multer.File,
   ) {
     const { conversationId, recipientId, content } = body;
 
@@ -95,18 +102,26 @@ export class MessagesService {
       throw new BadRequestException('Either conversationId or recipientId must be provided');
     }
 
-    // Save message
+    // Handle file upload if present
+    let fileUrl : null | string = null;
+    if (file) {
+      fileUrl = await this.uploadService.uploadFile(file);
+    }
+
+    // Save message with optional file URL
     const { rows: messageRows } = await this.pool.query(
-      `INSERT INTO messages (conversation_id, sender_id, content, created_at)
-       VALUES ($1, $2, $3, now())
+      `INSERT INTO messages (conversation_id, sender_id, content, file_url, created_at)
+       VALUES ($1, $2, $3, $4, now())
        RETURNING *`,
-      [resolvedConversationId, senderId, content],
+      [resolvedConversationId, senderId, content, fileUrl],
     );
+
+    const savedMessage = messageRows[0];
 
     return {
       message: 'Message sent',
       conversationId: resolvedConversationId,
-      data: messageRows[0],
+      data: savedMessage,
     };
   }
   async getMessages(userId: number, conversationId: number) {
@@ -134,7 +149,7 @@ export class MessagesService {
     const messagesRes = await this.pool.query(
       `
       SELECT m.id, m.content, m.created_at, 
-             u.id as sender_id, u.name as sender_name, u.email as sender_email
+             u.id as sender_id, u.name as sender_name, u.email as sender_email, file_url
       FROM messages m
       JOIN users u ON m.sender_id = u.id
       WHERE m.conversation_id = $1
