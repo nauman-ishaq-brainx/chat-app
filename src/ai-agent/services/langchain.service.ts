@@ -181,26 +181,30 @@ If the user asks for their schedule, events, or availability between two times, 
       .compile();
   }
 
-  async runAgent(userMessageHistory: any[]) {
-    try {
-      const result = await this.agentGraph.invoke(
-        { messages: userMessageHistory },
-        { recursionLimit: 10 } // Reduce recursion limit to prevent infinite loops
-      );
-      return result.messages.at(-1);
-    } catch (error) {
-      this.logger.error('Error running AI agent:', error);
-      
-      // If it's a recursion limit error, return a simple response
-      if (error.message?.includes('recursion limit') || error.message?.includes('GRAPH_RECURSION_LIMIT')) {
-        this.logger.warn('AI agent hit recursion limit, returning fallback response');
-        return {
-          content: 'I apologize, but I encountered an issue processing your request. Please try rephrasing your message or ask for something simpler.',
-          role: 'assistant'
-        };
+      async runAgent(userMessageHistory: any[]) {
+        try {
+          const result = await this.agentGraph.invoke(
+            { messages: userMessageHistory },
+            { recursionLimit: 10 } // Reduce recursion limit to prevent infinite loops
+          );
+          return result.messages.at(-1);
+        } catch (error) {
+          this.logger.error('Error running AI agent:', error);
+          
+          // If it's a recursion limit error, return a simple response
+          if (error.message?.includes('recursion limit') || error.message?.includes('GRAPH_RECURSION_LIMIT')) {
+            this.logger.warn('AI agent hit recursion limit, returning fallback response');
+            return {
+              content: 'I apologize, but I encountered an issue processing your request. Please try rephrasing your message or ask for something simpler.',
+              role: 'assistant'
+            };
+          }
+          
+          // Return a fallback response instead of throwing
+          return {
+            content: 'I apologize, but I encountered an issue processing your request. Please try again later.',
+            role: 'assistant'
+          };
+        }
       }
-      
-      throw new Error('Failed to process AI request. Please try again later.');
-    }
-  }
 }
