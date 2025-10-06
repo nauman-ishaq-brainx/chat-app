@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { ConversationsModule } from './conversations/conversations.module';
 import { MessagesModule } from './messages/messages.module';
+import { AiAgentModule } from './ai-agent/ai-agent.module';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { MessagesModule } from './messages/messages.module';
     }),
     UsersModule, 
     DatabaseModule, 
-    AuthModule, ConversationsModule, MessagesModule
+    AuthModule, ConversationsModule, MessagesModule, AiAgentModule
   ],
   controllers: [AppController],
   providers: [AppService],
