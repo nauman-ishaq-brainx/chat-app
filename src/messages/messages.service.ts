@@ -18,8 +18,8 @@ export class MessagesService {
   ) {
     const { conversationId, recipientId, content } = body;
 
-    if (!content || content.trim().length === 0) {
-      throw new BadRequestException('Message content cannot be empty');
+    if ((!content || content.trim().length === 0) && !file) {
+      throw new BadRequestException('Either message content or a file is required');
     }
 
     let resolvedConversationId = conversationId;
