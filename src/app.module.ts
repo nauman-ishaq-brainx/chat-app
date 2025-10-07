@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { ConversationsModule } from './conversations/conversations.module';
 import { MessagesModule } from './messages/messages.module';
+import { RagModule } from './rag/rag.module';
 import { AiCallModule } from './ai-call/ai-call.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { AiCallModule } from './ai-call/ai-call.module';
     AuthModule, 
     ConversationsModule, 
     MessagesModule, 
+    RagModule,
     AiCallModule,
   ],
   controllers: [AppController],
