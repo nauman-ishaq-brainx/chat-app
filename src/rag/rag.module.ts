@@ -7,6 +7,7 @@ import { ConfigModule } from '@nestjs/config';
   imports: [ConfigModule],
   controllers: [RagController],
   providers: [RagService],
+  exports: [RagService],
 })
 export class RagModule {}
 

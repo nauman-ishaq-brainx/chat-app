@@ -7,9 +7,10 @@ import { LangchainService } from './services/langchain.service';
 import { TranscriptionService } from './services/transcription.service';
 import { MessagesModule } from '../messages/messages.module';
 import { UploadService } from '../messages/upload.service';
+import { RagModule } from '../rag/rag.module';
 
 @Module({
-  imports: [MessagesModule],
+  imports: [MessagesModule, RagModule],
   controllers: [AiAgentController],
   providers: [AiAgentService, EmailService, CalendarService, LangchainService, TranscriptionService, UploadService],
   exports: [AiAgentService],

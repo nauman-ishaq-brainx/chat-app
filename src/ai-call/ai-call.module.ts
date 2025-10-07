@@ -3,9 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 import { AiCallController } from './ai-call.controller';
 import { EmailService } from '../ai-agent/services/email.service';
 import { CalendarService } from '../ai-agent/services/calendar.service';
+import { RagModule } from '../rag/rag.module';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, RagModule],
   controllers: [AiCallController],
   providers: [EmailService, CalendarService],
   exports: [],

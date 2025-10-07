@@ -2,6 +2,7 @@ import { Body, Controller, HttpException, HttpStatus, Post } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../ai-agent/services/email.service';
 import { CalendarService } from '../ai-agent/services/calendar.service';
+import { RagService } from '../rag/rag.service';
 
 @Controller('ai-call')
 export class AiCallController {
@@ -9,6 +10,7 @@ export class AiCallController {
         private readonly config: ConfigService,
         private readonly emailService: EmailService,
         private readonly calendarService: CalendarService,
+        private readonly ragService: RagService,
     ) { }
 
     @Post('session')
@@ -55,22 +57,34 @@ export class AiCallController {
                             },
                         },
                     },
-                    {
-                        type: 'function',
-                        name: 'SCHEDULE_EVENT',
-                        description: 'Add a new calendar event.',
-                        parameters: {
-                            type: 'object',
-                            properties: {
-                                title: { type: 'string' },
-                                description: { type: 'string' },
-                                startTime: { type: 'string' },
-                                endTime: { type: 'string' },
-                                attendees: { type: 'array', items: { type: 'string' } },
-                            },
-                            required: ['title', 'startTime', 'endTime'],
-                        },
-                    },
+              {
+                type: 'function',
+                name: 'SCHEDULE_EVENT',
+                description: 'Add a new calendar event.',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    title: { type: 'string' },
+                    description: { type: 'string' },
+                    startTime: { type: 'string' },
+                    endTime: { type: 'string' },
+                    attendees: { type: 'array', items: { type: 'string' } },
+                  },
+                  required: ['title', 'startTime', 'endTime'],
+                },
+              },
+              {
+                type: 'function',
+                name: 'QUERY_DOCUMENTS',
+                description: 'Search through uploaded documents to answer questions about their content.',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    query: { type: 'string', description: 'The question or query to search for in the documents' },
+                  },
+                  required: ['query'],
+                },
+              },
                 ],
             }),
         });
@@ -87,8 +101,8 @@ export class AiCallController {
 
     // Executes a tool call from the model using your existing services
     @Post('tool-run')
-    async toolRun(@Body() body: { name: string; args: any; callId?: string }) {
-        const { name, args } = body || {};
+    async toolRun(@Body() body: { name: string; args: any; callId?: string; userId?: number }) {
+        const { name, args, userId } = body || {};
         try {
             switch (name) {
                 case 'SEND_EMAIL': {
@@ -117,20 +131,27 @@ export class AiCallController {
                     const events = await this.calendarService.getEventsInRange(start, end);
                     return { success: true, events };
                 }
-                case 'SCHEDULE_EVENT': {
-                    const { title, description, startTime, endTime, attendees } = args || {};
-                    if (!title || !startTime || !endTime) throw new Error('Missing event parameters');
-                    const event = await this.calendarService.addEvent({
-                        summary: title,
-                        description: description || '',
-                        startTime,
-                        endTime,
-                        attendees: Array.isArray(attendees) ? attendees : [],
-                    });
-                    return { success: true, event };
-                }
-                default:
-                    return { success: false, error: 'Unknown tool' };
+            case 'SCHEDULE_EVENT': {
+              const { title, description, startTime, endTime, attendees } = args || {};
+              if (!title || !startTime || !endTime) throw new Error('Missing event parameters');
+              const event = await this.calendarService.addEvent({
+                summary: title,
+                description: description || '',
+                startTime,
+                endTime,
+                attendees: Array.isArray(attendees) ? attendees : [],
+              });
+              return { success: true, event };
+            }
+            case 'QUERY_DOCUMENTS': {
+              const { query } = args || {};
+              if (!query) throw new Error('Missing query parameter');
+              if (!userId) throw new Error('User ID is required for document queries');
+              const result = await this.ragService.generateRAGResponse(userId, query);
+              return { success: true, answer: result.answer, sources: result.sources };
+            }
+            default:
+              return { success: false, error: 'Unknown tool' };
             }
         } catch (e: any) {
             throw new HttpException(e?.message || 'Tool execution failed', HttpStatus.BAD_REQUEST);

@@ -47,7 +47,7 @@ export class AiAgentService {
       const messageHistory = [...conversationHistory, userMessage];
 
       // Process through AI agent
-      const aiResponse = await this.langchainService.runAgent(messageHistory);
+      const aiResponse = await this.langchainService.runAgent(messageHistory, userId);
 
       // Save the user message with agent as recipient
       this.logger.log(`Saving user message from ${userId} to agent ${this.AI_AGENT_USER_ID}`);

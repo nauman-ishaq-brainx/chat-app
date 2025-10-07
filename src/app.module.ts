@@ -9,6 +9,7 @@ import { ConversationsModule } from './conversations/conversations.module';
 import { MessagesModule } from './messages/messages.module';
 import { RagModule } from './rag/rag.module';
 import { AiCallModule } from './ai-call/ai-call.module';
+import { AiAgentModule } from './ai-agent/ai-agent.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AiCallModule } from './ai-call/ai-call.module';
     MessagesModule, 
     RagModule,
     AiCallModule,
+    AiAgentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
