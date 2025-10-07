@@ -6,6 +6,7 @@ import { ToolNode } from '@langchain/langgraph/prebuilt';
 import { z } from 'zod';
 import { EmailService } from './email.service';
 import { CalendarService } from './calendar.service';
+import { RagService } from '../../rag/rag.service';
 
 @Injectable()
 export class LangchainService {
@@ -16,6 +17,7 @@ export class LangchainService {
   constructor(
     private readonly emailService: EmailService,
     private readonly calendarService: CalendarService,
+    private readonly ragService: RagService,
   ) {
     this.initializeAgent();
   }
@@ -116,8 +118,33 @@ export class LangchainService {
       },
     );
 
+    // RAG Query Tool
+    const ragQueryTool = tool(
+      async ({ query }, { configurable }) => {
+        try {
+          const userId = configurable?.userId || 1; // Fallback to user 1 if not provided
+          const result = await this.ragService.generateRAGResponse(userId, query);
+          if (result.success && result.answer) {
+            return result.answer;
+          } else {
+            return "I couldn't find any relevant information in your documents to answer this question.";
+          }
+        } catch (err) {
+          this.logger.error('RAG query error:', err);
+          return "I couldn't find any relevant information in your documents to answer this question.";
+        }
+      },
+      {
+        name: 'queryDocuments',
+        description: 'Search through uploaded documents to answer questions about their content. Use this for general knowledge questions that might be in the user\'s documents.',
+        schema: z.object({
+          query: z.string().describe('The question or query to search for in the documents'),
+        }),
+      },
+    );
+
     // Setup tools and LLM
-    const tools = [emailTool, calendarEventTool, getEventsInRangeTool];
+    const tools = [emailTool, calendarEventTool, getEventsInRangeTool, ragQueryTool];
     const toolNode = new ToolNode(tools);
 
     this.llm = new ChatOpenAI({
@@ -130,31 +157,36 @@ export class LangchainService {
       const systemPrompt = {
         role: 'system',
         content: `
-You are a strict assistant that must always use the tools provided.
+You are a helpful AI assistant with access to several tools. Use the appropriate tool based on the user's request:
 
-When the user wants to add a calendar event:
+1. EMAIL TOOL: Use 'sendEmail' when the user wants to send an email. The sender name should be 'Nauman' and don't use any placeholders in the email.
 
-1. Always use today's date unless the user specifies another day.
-   - Today is ${today}.
-2. Always set event time in the 'Asia/Karachi' timezone (UTC+05:00).
-3. Always return ISO 8601 datetime strings with timezone offsets.
-   - Example: "2025-07-03T14:00:00+05:00" (for 2:00 PM Pakistan time).
-4. Do NOT use UTC time or 'Z' suffix (e.g., avoid "2025-07-03T14:00:00Z").
-5. The event time must reflect the user's intended local time (e.g., if they say "2pm today", it should be 14:00 in Asia/Karachi). Write the name of attendees in an array of objects in the 
-following format.
-[
-  { "email": "lead@example.com", "displayName": "Team Lead" },
-  { "email": "designer@example.com" }
-]
+2. CALENDAR TOOLS: 
+   - Use 'addCalendarEvent' when the user wants to schedule a new event
+   - Use 'getEventsInRange' when the user asks for their schedule, events, or availability
+   
+   For calendar events:
+   - Always use today's date unless the user specifies another day (Today is ${today})
+   - Always set event time in the 'Asia/Karachi' timezone (UTC+05:00)
+   - Always return ISO 8601 datetime strings with timezone offsets
+   - Example: "2025-07-03T14:00:00+05:00" (for 2:00 PM Pakistan time)
+   - Do NOT use UTC time or 'Z' suffix
+   - For attendees, use format: [{"email": "lead@example.com", "displayName": "Team Lead"}]
+   - If no attendees, keep the array empty
+   - Add only one event in a single query
 
-replace the emails with the emails given in the query. If there no attendee, keep the array empty. Add only one event in a single query.
+3. DOCUMENT SEARCH: Use 'queryDocuments' for general questions that might be answered by the user's uploaded documents. This includes:
+   - Questions about specific topics that might be in their documents
+   - Requests for information that could be found in uploaded files
+   - General knowledge questions where document content might be relevant
 
-Do not respond with free text — always use the calendar tool.
+4. TOOL SELECTION PRIORITY:
+   - If the user asks about sending emails → use sendEmail
+   - If the user asks about calendar/schedule → use calendar tools
+   - If the user asks general questions → use queryDocuments
+   - If queryDocuments returns "couldn't find information" → tell the user you couldn't find that information in their documents
 
-If the user asks to send an email, use the 'emailTool'. the name of sender should be 'Nauman' and don't use any placeholders in the email. 
-For generic questions, use the 'queryTool'.
-
-If the user asks for their schedule, events, or availability between two times, use 'getEventsInRange'. Always require both start and end times in the query. Format them in ISO 8601 with +05:00 timezone.
+Always use the appropriate tool and don't respond with free text unless no tool is applicable.
 `.trim(),
       };
 
@@ -181,10 +213,14 @@ If the user asks for their schedule, events, or availability between two times, 
       .compile();
   }
 
-      async runAgent(userMessageHistory: any[]) {
+      async runAgent(userMessageHistory: any[], userId: number) {
         try {
+          // Create a modified state that includes userId for RAG queries
           const result = await this.agentGraph.invoke(
-            { messages: userMessageHistory },
+            { 
+              messages: userMessageHistory,
+              userId: userId // Pass userId for RAG queries
+            },
             { recursionLimit: 10 } // Reduce recursion limit to prevent infinite loops
           );
           return result.messages.at(-1);
