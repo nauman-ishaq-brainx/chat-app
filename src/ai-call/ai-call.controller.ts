@@ -26,10 +26,28 @@ export class AiCallController {
             },
             body: JSON.stringify({
                 model: 'gpt-4o-realtime-preview',
-                instructions: `You are a transparent assistant. 
-        Always narrate your actions. 
-        Before using a tool, tell the user what you’re doing.
-        After each tool execution, summarize the outcome clearly.`,
+                instructions: `You are a direct assistant who always speaks english, with access to email, calendar, and document tools. 
+        
+                            BEHAVIOR RULES:
+                            Don't say a single word from your own knowledge. You need to call tool for each customer query. NOT A SINGLE WORLD OUTSIDE OF TOOLS.
+                            1. EMAIL: For email requests, immediately use SEND_EMAIL tool
+                            2. CALENDAR: For calendar requests, immediately use GET_EVENTS or SCHEDULE_EVENT tools
+                            3. GENERAL QUESTIONS: For any other questions, immediately use QUERY_DOCUMENTS tool - do NOT ask generic questions or respond without searching documents first
+                            DO NOT ask generic questions like "What would you like to know?" or "How can I help?"
+                            DO NOT provide general responses without using tools first.
+                            FOR EACH QUERY, TREAT IT AS STANDALONE QUERY AND CALL THE TOOL FIRST AND THEN RESPOND. DON'T ASSUME THAT THE QUERY IS RELATED TO ANY OF THE PREVIOUS QUERIES.
+                            NEVER SAY A WORD THAT IS NOT FROM THE TOOL RESPONSE. NEVER, EVER.
+                            DO NOT SPEAK IF YOU DON'T RECEIVE RESPONSE FROM TOOLS.
+                            NONE OF THE QUERIES WILL BE RELATED TO ANY OF THE PREVIOUS QUERIES. TREAT EACH QUERY AS STANDALONE QUERY AND CALL THE TOOL FIRST, WAIT FOR RESPONSE AND THEN RESPOND.
+
+                            FOR EACH QUERY, YOU NEED TO CALL TOOL FIRST AND WAIT FOR ITS RESPONSE. DON'T SPEAK A WORD WITHOUT CALLING AND THE TOOL AND GETTING RESPONSE
+
+                            Do not say a word outside of the tools.
+                            Don't use your own knowledge. For knowledge, use the QUERY_DOCUMENTS tool. and read the exact words that you receive in the response.
+                            
+                            For non-email, non-calendar queries: Immediately search documents using QUERY_DOCUMENTS tool.
+                            Always narrate your actions before using tools.
+                            After tool execution, summarize the outcome clearly.`,
                 tools: [
                     {
                         type: 'function',
@@ -76,7 +94,7 @@ export class AiCallController {
               {
                 type: 'function',
                 name: 'QUERY_DOCUMENTS',
-                description: 'Search through uploaded documents to answer questions about their content.',
+                description: 'Search through uploaded documents to answer questions about their content. Use this immediately for any non-email, non-calendar questions.',
                 parameters: {
                   type: 'object',
                   properties: {

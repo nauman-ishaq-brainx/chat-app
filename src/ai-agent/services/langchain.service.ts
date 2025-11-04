@@ -136,7 +136,7 @@ export class LangchainService {
       },
       {
         name: 'queryDocuments',
-        description: 'Search through uploaded documents to answer questions about their content. Use this for general knowledge questions that might be in the user\'s documents.',
+        description: 'Search through uploaded documents to answer questions about their content. ONLY use this for general knowledge questions that are NOT about email or calendar. Do NOT use for email or calendar related queries.',
         schema: z.object({
           query: z.string().describe('The question or query to search for in the documents'),
         }),
@@ -156,7 +156,7 @@ export class LangchainService {
     const llmCall = async (state) => {
       const systemPrompt = {
         role: 'system',
-        content: `
+            content: `
 You are a helpful AI assistant with access to several tools. Use the appropriate tool based on the user's request:
 
 1. EMAIL TOOL: Use 'sendEmail' when the user wants to send an email. The sender name should be 'Nauman' and don't use any placeholders in the email.
@@ -175,17 +175,20 @@ You are a helpful AI assistant with access to several tools. Use the appropriate
    - If no attendees, keep the array empty
    - Add only one event in a single query
 
-3. DOCUMENT SEARCH: Use 'queryDocuments' for general questions that might be answered by the user's uploaded documents. This includes:
+3. DOCUMENT SEARCH: Use 'queryDocuments' ONLY for general knowledge questions that are NOT about email or calendar. This includes:
    - Questions about specific topics that might be in their documents
    - Requests for information that could be found in uploaded files
    - General knowledge questions where document content might be relevant
+   - DO NOT use for email or calendar related queries
 
-4. TOOL SELECTION PRIORITY:
+4. TOOL SELECTION PRIORITY (CRITICAL):
    - If the user asks about sending emails → use sendEmail
    - If the user asks about calendar/schedule → use calendar tools
-   - If the user asks general questions → use queryDocuments
+   - If the user asks general questions (NOT email/calendar) → use queryDocuments
    - If queryDocuments returns "couldn't find information" → tell the user you couldn't find that information in their documents
 
+IMPORTANT: Always prioritize email and calendar tools over document search. Only use queryDocuments for non-email, non-calendar questions.
+If the information is not found in the documents, tell the user that you couldn't find that information in their documents. Don't add any other information to the response.
 Always use the appropriate tool and don't respond with free text unless no tool is applicable.
 `.trim(),
       };

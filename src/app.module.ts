@@ -10,12 +10,18 @@ import { MessagesModule } from './messages/messages.module';
 import { RagModule } from './rag/rag.module';
 import { AiCallModule } from './ai-call/ai-call.module';
 import { AiAgentModule } from './ai-agent/ai-agent.module';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ThrottlerModule.forRoot([{
+      ttl: 30000, // Time window in milliseconds (1 minute)
+      limit: 5, // Maximum number of requests per time window
+    }]),
     UsersModule, 
     DatabaseModule, 
     AuthModule, 
@@ -26,6 +32,12 @@ import { AiAgentModule } from './ai-agent/ai-agent.module';
     AiAgentModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
